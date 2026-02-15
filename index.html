@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ActorScript v5.24 - Balde de Tinta</title>
+    <title>Actor script V5.28 - Tocar música</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
@@ -17,11 +17,14 @@
         h3 { margin-top: 0; border-bottom: 2px solid #e0e0e0; padding-bottom: 8px; color: #333; font-size: 24px; }
         .block-category { margin-bottom: 10px; }
         .block { padding: 10px; margin-bottom: 8px; border-radius: 5px; color: white; cursor: pointer; text-align: center; display: flex; align-items: center; justify-content: center; gap: 5px; flex-wrap: wrap; }
+        
+        /* Cores dos Blocos */
         .block-motion { background-color: #4C97FF; }
         .block-event { background-color: #FFC300; }
         .block-control { background-color: #FFAB19; }
         .block-variable { background-color: #FF8C1A; }
         .block-custom { background-color: #FF6680; }
+        .block-sound { background-color: #76C95A; } 
         
         #script-container { min-height: 500px; border: 1px dashed #ccc; padding: 10px; border-radius: 4px; }
         .script-wrapper { margin-bottom: 20px; border-left: 3px solid transparent; padding-left: 5px; }
@@ -110,7 +113,7 @@
 <body>
 
     <div id="header">
-        <h1>ActorScript v5.24 - Balde de Tinta</h1>
+        <h1>Actor script V5.28 - Tocar música</h1>
         <div id="header-buttons">
             <button class="community-btn" onclick="openPublishModal()">Publicar Jogo</button>
             <button class="community-btn" onclick="openCommunityModal()">Jogos da Comunidade</button>
@@ -134,6 +137,13 @@
                 <div class="block block-motion" onclick="addBlockToScript('POINT_IN_DIRECTION')">Aponte para a direção 90</div>
                 <div class="block block-motion" onclick="addBlockToScript('TURN_DEGREES')">Gire 15 graus</div>
             </div>
+            
+            <div class="block-category">
+                <h3>Sons</h3>
+                <div class="block block-sound" onclick="addBlockToScript('PLAY_SOUND')">Tocar Som</div>
+                <div class="block block-sound" onclick="addBlockToScript('PLAY_SOUND_FOR_SECONDS')">Tocar Som por ... seg</div>
+            </div>
+
             <div class="block-category"><h3>Eventos</h3><div class="block block-event" onclick="createNewScript('ON_START')">Quando o jogo começar</div><div class="block block-event" onclick="createNewScript('ON_CLICK')">Quando este ator for clicado</div><div class="block block-event" onclick="createNewScript('ON_KEY')">Quando a tecla [ w ] for pressionada</div><div class="block block-event" onclick="addBlockToScript('BROADCAST')">Mande a mensagem [ nome ]</div><div class="block block-event" onclick="createNewScript('ON_MESSAGE')">Quando eu receber [ nome ]</div></div>
             <div class="block-category"><h3>Controle</h3><div class="block block-control" onclick="createNewScript('FOREVER')">Para sempre</div><div class="block block-control" onclick="addBlockToScript('WAIT_SECONDS')">Espere 1 segundos</div><div class="block block-control" onclick="addBlockToScript('IF_COLLISION')">Se colidir com ...</div><div class="block block-control" onclick="addBlockToScript('STOP')">Pare ...</div></div>
             <div class="block-category" id="variable-blocks-palette"><h3>Variáveis</h3><button id="btn-variable" onclick="createVariable()">Criar uma Variável</button><div class="variable-pill-container" id="variable-pills"></div></div>
@@ -185,7 +195,6 @@
             <h4>Jogos da Comunidade</h4>
             <ul id="community-games-list"><li>Nenhum jogo publicado ainda.</li></ul>
             <hr> 
-            <button class="danger-btn" onclick="resetCommunityGames()">Reiniciar Comunidade</button>
             <button class="cancel-btn" onclick="closeCommunityModal()">Voltar ao Editor</button>
         </div>
     </div>
@@ -345,13 +354,7 @@
                 enterPlayMode();
             } else { alert("Erro ao carregar o jogo."); }
         }
-        function resetCommunityGames() {
-            if (confirm("TEM CERTEZA?\nTodos os jogos publicados na comunidade (salvos neste navegador) serão apagados permanentemente. Esta ação não pode ser desfeita.")) {
-                localStorage.removeItem('communityGames');
-                alert("Os jogos da comunidade foram reiniciados.");
-                openCommunityModal(); // Refresh the list
-            }
-        }
+        
         function serializeGameState() {
              const state = { actors: [], globalVariables, customBlocks, stageBackground };
              state.actors = JSON.parse(JSON.stringify(actors, (key, value) => (key === 'element' ? undefined : value) ));
@@ -513,10 +516,12 @@
             else if (blockType === 'WAIT_SECONDS') { d.params.val = { type: 'value', content: 1 }; }
             else if (blockType === 'IF_COLLISION') { d.params.targetActorId = null; }
             else if (blockType === 'STOP') { d.params.target = 'all'; }
+            else if (blockType === 'PLAY_SOUND') { d.params.audioSrc = null; d.params.fileName = null; }
+            else if (blockType === 'PLAY_SOUND_FOR_SECONDS') { d.params.audioSrc = null; d.params.fileName = null; d.params.val = { type: 'value', content: 1 }; }
             s.blocks.push(d);
             renderScriptForSelectedActor();
         }
-        function requestDeleteBlock(event, si, bi) { if (event.target.tagName.toLowerCase().match(/input|select/) || event.target.classList.contains('variable-pill-in-block')) return; if (confirm("Tem certeza?")) { getSelectedActor().scripts[si].blocks.splice(bi, 1); renderScriptForSelectedActor(); } }
+        function requestDeleteBlock(event, si, bi) { if (event.target.tagName.toLowerCase().match(/input|select|label/) || event.target.classList.contains('variable-pill-in-block')) return; if (confirm("Tem certeza?")) { getSelectedActor().scripts[si].blocks.splice(bi, 1); renderScriptForSelectedActor(); } }
         
         // --- LÓGICA DE RENDERIZAÇÃO ---
         function renderScriptForSelectedActor() { const a = getSelectedActor(), c = document.getElementById('script-container'); c.innerHTML = ''; if (!a) { document.getElementById('script-title').textContent = "Script (Nenhum Ator)"; return; } document.getElementById('script-title').textContent = `Script para: ${a.name}`; a.scripts.forEach((s, i) => { const w = document.createElement('div'); w.className = 'script-wrapper'; w.dataset.scriptIndex = i; if (i === activeScriptIndex) w.classList.add('active'); w.appendChild(renderBlock(a, s.trigger, i, -1, true)); s.blocks.forEach((b, bi) => w.appendChild(renderBlock(a, b, i, bi, false))); c.appendChild(w); }); }
@@ -559,6 +564,22 @@
                  case 'STOP': div.classList.add('block-control'); div.innerHTML = `Pare ${renderStopDropdown(d.params.target)}`; break;
                  case 'SET_VAR': div.classList.add('block-variable'); div.innerHTML = `Mudar [${d.params.varName}] para ${renderParam(d.params.val, 'val')}`; break;
                  case 'CHANGE_VAR_BY': div.classList.add('block-variable'); div.innerHTML = `Adicione ${renderParam(d.params.val, 'val')} a [${d.params.varName}]`; break;
+                 case 'PLAY_SOUND': 
+                     div.classList.add('block-sound'); 
+                     const fileName = d.params.fileName ? (d.params.fileName.length > 15 ? d.params.fileName.substring(0,12)+'...' : d.params.fileName) : "Escolher arquivo...";
+                     div.innerHTML = `Tocar Som: <label style="background:rgba(0,0,0,0.2); padding:2px 5px; border-radius:3px; cursor:pointer; display:flex; align-items:center; gap:5px;">
+                        <span>${fileName}</span>
+                        <input type="file" accept="audio/*" style="display:none" onchange="handleAudioUpload(event, ${si}, ${bi})">
+                     </label>`; 
+                     break;
+                 case 'PLAY_SOUND_FOR_SECONDS':
+                    div.classList.add('block-sound');
+                    const fName = d.params.fileName ? (d.params.fileName.length > 10 ? d.params.fileName.substring(0,8)+'...' : d.params.fileName) : "Arquivo...";
+                    div.innerHTML = `Tocar <label style="background:rgba(0,0,0,0.2); padding:2px 5px; border-radius:3px; cursor:pointer; display:inline-flex; align-items:center;">
+                        <span>${fName}</span>
+                        <input type="file" accept="audio/*" style="display:none" onchange="handleAudioUpload(event, ${si}, ${bi})">
+                    </label> por ${renderParam(d.params.val, 'val')} seg`;
+                    break;
              } }
              return div;
         }
@@ -566,6 +587,19 @@
         function updateTextParam(si, bi, pName, val) { const a = getSelectedActor(); let t = (bi === -1) ? a.scripts[si].trigger : a.scripts[si].blocks[bi]; if (!t.params[pName]) t.params[pName] = {}; t.params[pName].content = val; }
         function updateCollisionTarget(si, bi, targetId) { getSelectedActor().scripts[si].blocks[bi].params.targetActorId = targetId ? parseInt(targetId, 10) : null; }
         function updateStopTarget(si, bi, target) { getSelectedActor().scripts[si].blocks[bi].params.target = target; }
+        function handleAudioUpload(event, si, bi) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const result = e.target.result;
+                const a = getSelectedActor();
+                a.scripts[si].blocks[bi].params.audioSrc = result;
+                a.scripts[si].blocks[bi].params.fileName = file.name;
+                renderScriptForSelectedActor();
+            };
+            reader.readAsDataURL(file);
+        }
         function renderCustomBlockPalette() { const p = document.getElementById('custom-blocks-palette'); p.querySelectorAll('.block.block-custom').forEach(b => b.remove()); customBlocks.forEach(cb => { const d = document.createElement('div'); d.className = 'block block-custom'; cb.definition.forEach(part => { d.innerHTML += (part.type === 'label') ? `<span>${part.content}</span>` : `<div class="variable-pill param" style="pointer-events:none; font-size:16px;">${part.name}</div>`; }); d.onclick = () => addBlockToScript(cb.id); p.appendChild(d); }); }
         function setActiveScript(event) { const w = event.target.closest('.script-wrapper'); document.querySelectorAll('.script-wrapper').forEach(wr => wr.classList.remove('active')); if (w) { activeScriptIndex = parseInt(w.dataset.scriptIndex, 10); w.classList.add('active'); } else { activeScriptIndex = null; } renderVariablePalette(); }
         
@@ -619,6 +653,27 @@
                            if (isRunning) toggleExecution();
                         } else {
                            actor.isStopped = true;
+                        }
+                        break;
+                    case 'PLAY_SOUND':
+                        shouldUpdatePosition = false;
+                        if (blockData.params.audioSrc) {
+                            const audio = new Audio(blockData.params.audioSrc);
+                            audio.play().catch(e => console.error("Erro ao tocar áudio:", e));
+                        }
+                        break;
+                    case 'PLAY_SOUND_FOR_SECONDS':
+                        shouldUpdatePosition = false;
+                        const duration = resolveParamValue(blockData.params.val, context);
+                        if (blockData.params.audioSrc) {
+                            const audio = new Audio(blockData.params.audioSrc);
+                            audio.play().catch(e => console.error(e));
+                            // Wait for X seconds
+                            await new Promise(res => setTimeout(res, duration * 1000));
+                            audio.pause(); 
+                            audio.currentTime = 0;
+                        } else {
+                             await new Promise(res => setTimeout(res, duration * 1000));
                         }
                         break;
                 }
