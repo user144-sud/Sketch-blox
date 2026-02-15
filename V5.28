@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Actor script V5.28 - Tocar música</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'VT323', monospace; padding: 10px; background-color: #f0f2f5; font-size: 20px; user-select: none; padding-top: 70px; }
+        #main-container { display: flex; justify-content: space-between; }
+        .column { display: flex; flex-direction: column; gap: 15px; padding: 15px; background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        #block-palette { width: 25%; }
+        #scripting-area { width: 45%; }
+        #stage-area { width: 30%; }
+        h3 { margin-top: 0; border-bottom: 2px solid #e0e0e0; padding-bottom: 8px; color: #333; font-size: 24px; }
+        .block-category { margin-bottom: 10px; }
+        .block { padding: 10px; margin-bottom: 8px; border-radius: 5px; color: white; cursor: pointer; text-align: center; display: flex; align-items: center; justify-content: center; gap: 5px; flex-wrap: wrap; }
+        
+        /* Cores dos Blocos */
+        .block-motion { background-color: #4C97FF; }
+        .block-event { background-color: #FFC300; }
+        .block-control { background-color: #FFAB19; }
+        .block-variable { background-color: #FF8C1A; }
+        .block-custom { background-color: #FF6680; }
+        .block-sound { background-color: #76C95A; } 
+        
+        #script-container { min-height: 500px; border: 1px dashed #ccc; padding: 10px; border-radius: 4px; }
+        .script-wrapper { margin-bottom: 20px; border-left: 3px solid transparent; padding-left: 5px; }
+        .script-wrapper.active { border-left: 3px solid #FF6680; }
+        .hat-block { border-radius: 15px 15px 3px 3px; }
+        .script-block { padding: 8px 12px; color: white; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: -1px; border-radius: 0 0 3px 3px; }
+        .script-wrapper > .script-block { cursor: pointer; }
+        .script-block.hat-block { cursor: default; }
+        .script-block input, .script-block select { width: 80px; padding: 5px; border: none; border-radius: 5px; font-family: 'VT323', monospace; font-size: 20px; text-align: center; cursor: pointer; }
+        .script-block select { width: auto; min-width: 100px; text-align-last: center; }
+        
+        .variable-pill-container { display: flex; flex-direction: column; gap: 5px; margin-top: 10px; }
+        .variable-pill { background-color: #FF8C1A; color: white; padding: 2px 10px; border-radius: 10px; font-size: 18px; border: 1px solid white; }
+        .variable-pill.param { background-color: #FF6680; }
+        .variable-pill-in-block { background-color: #FF8C1A; color: white; padding: 2px 10px; border-radius: 10px; font-size: 18px; border: 1px solid rgba(255,255,255,0.5); cursor: pointer; }
+        .variable-pill-in-block.param { background-color: #FF6680; }
+        .variable-control { display: flex; align-items: center; gap: 5px; }
+        
+        #param-menu { position: absolute; background-color: #fff; border: 1px solid #ccc; box-shadow: 0 2px 5px rgba(0,0,0,0.2); border-radius: 4px; padding: 5px; z-index: 1000; }
+        #param-menu ul { list-style: none; margin: 0; padding: 0; }
+        #param-menu li { padding: 5px 10px; cursor: pointer; }
+        #param-menu li:hover { background-color: #f0f0f0; }
+
+        #stage { width: 100%; height: 400px; border: 2px solid #333; background-color: #f7f7f7; position: relative; overflow: hidden; cursor: crosshair; background-size: cover; image-rendering: pixelated; }
+        #variable-display-container { position: absolute; top: 5px; left: 5px; display: flex; flex-direction: column; gap: 5px; z-index: 10; }
+        .variable-display { background-color: #FF8C1A; color: white; padding: 2px 8px; border-radius: 4px; font-size: 18px; border: 1px solid white; }
+        .actor { width: 40px; height: 40px; position: absolute; box-sizing: border-box; cursor: pointer; background-size: cover; image-rendering: pixelated; transform-origin: center center; }
+        
+        #controls button { width: 100%; padding: 10px 15px; border: none; color: white; font-size: 18px; cursor: pointer; border-radius: 5px; font-family: 'VT323', monospace; margin-bottom: 5px; }
+        #btn-run { background-color: #28a745; } #btn-run.stop { background-color: #dc3545; } #btn-actor { background-color: #007bff; } #btn-draw-actor { background-color: #17a2b8; } #btn-edit-scenery { background-color: #20c997; } #btn-custom-block { background-color: #FF6680; } #btn-variable { background-color: #FF8C1A; }
+        #actor-list { list-style: none; padding: 0; }
+        #actor-list li.selected { background-color: #007bff; color: white; font-weight: bold; }
+
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; display: none; justify-content: center; align-items: center; }
+        .modal-content { background: white; padding: 20px; border-radius: 8px; width: auto; max-height: 90vh; overflow-y: auto; }
+        #custom-block-preview { background: #FF6680; padding: 10px; border-radius: 5px; min-height: 40px; margin: 10px 0; display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+        #custom-block-preview .param-pill { background: white; color: #FF6680; border-radius: 10px; padding: 2px 8px; }
+
+        #header { display: flex; justify-content: space-between; align-items: center; width: 100%; padding: 10px 20px; background-color: #333; color: white; position: fixed; top: 0; left: 0; z-index: 1001; box-sizing: border-box; }
+        #header h1 { margin: 0; font-size: 24px; }
+        #header-buttons, #user-area { display: flex; align-items: center; gap: 15px; }
+        #user-display { font-size: 18px; }
+        #header button { padding: 5px 10px; font-size: 16px; background-color: #007bff; border: none; color: white; border-radius: 5px; cursor: pointer; font-family: 'VT323', monospace; }
+        #header button.community-btn { background-color: #17a2b8; }
+        .modal-content .form-group { margin-bottom: 15px; }
+        .modal-content label { display: block; margin-bottom: 5px; color: #333; }
+        .modal-content input[type="text"], .modal-content input[type="password"] { width: 100%; padding: 8px; box-sizing: border-box; border-radius: 4px; border: 1px solid #ccc; font-family: 'VT323', monospace; font-size: 18px; }
+        .modal-content button { padding: 10px 15px; border: none; color: white; font-size: 18px; cursor: pointer; border-radius: 5px; font-family: 'VT323', monospace; margin-right: 10px; background-color: #28a745;}
+        .modal-content button.cancel-btn { background-color: #6c757d; }
+        .modal-content button.danger-btn { background-color: #dc3545; }
+        
+        #community-games-list { list-style: none; padding: 0; }
+        #community-games-list li { background: #f0f2f5; padding: 10px; border-radius: 5px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+        #community-games-list button { font-size: 16px; background-color: #FF8C1A; }
+
+        #play-mode-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.85); z-index: 2000; display: none; flex-direction: column; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box; }
+        #play-mode-overlay #stage { width: 90vw; height: 70vh; max-width: 1000px; max-height: 750px; border: 3px solid #FF8C1A; }
+        #play-mode-exit-btn { margin-top: 20px; padding: 10px 25px; font-size: 22px; background-color: #dc3545; border: none; color: white; border-radius: 5px; cursor: pointer; font-family: 'VT323', monospace; }
+        
+        .security-warning { color: #dc3545; font-weight: bold; text-align: center; border: 1px solid #dc3545; padding: 8px; border-radius: 4px; margin-bottom: 15px; font-size: 16px; }
+        .account-tabs { display: flex; margin-bottom: 15px; border-bottom: 1px solid #ccc; }
+        .account-tabs button { flex: 1; background: #eee; border: none; padding: 10px; font-size: 18px; cursor: pointer; border-radius: 5px 5px 0 0; }
+        .account-tabs button.active { background: white; border: 1px solid #ccc; border-bottom: 1px solid white; margin-bottom: -1px; }
+        .account-tab-content { display: none; }
+        .account-tab-content.active { display: block; }
+
+        /* Pixel Editor Styles */
+        #pixel-editor-container, #scenery-editor-container { display: flex; gap: 20px; align-items: flex-start; }
+        #pixel-grid { display: grid; grid-template-columns: repeat(16, 25px); grid-template-rows: repeat(16, 25px); border: 1px solid #999; width: 400px; height: 400px; cursor: crosshair; }
+        #scenery-grid { display: grid; grid-template-columns: repeat(32, 15px); grid-template-rows: repeat(24, 15px); border: 1px solid #999; width: 480px; height: 360px; cursor: crosshair; }
+        .pixel, .scenery-pixel { background-color: transparent; box-sizing: border-box; }
+        .pixel { width: 25px; height: 25px; border: 1px solid #eee; transition: transform 0.1s ease-out; }
+        .scenery-pixel { width: 15px; height: 15px; border: 1px solid #f9f9f9; }
+        .pixel.pop { animation: pop 0.2s ease-out; }
+        @keyframes pop { 0% { transform: scale(0.8); } 50% { transform: scale(1.2); } 100% { transform: scale(1); } }
+        #pixel-controls { display: flex; flex-direction: column; gap: 15px; }
+        #scenery-tools { display: flex; gap: 10px; }
+        #pixel-preview-container { text-align: center; }
+        #pixel-preview-canvas { width: 160px; height: 160px; border: 2px solid #333; image-rendering: pixelated; background-color: #f0f2f5; }
+        #color-palette { display: grid; grid-template-columns: repeat(5, 35px); gap: 5px; }
+        .color-box { width: 35px; height: 35px; border: 2px solid #ccc; cursor: pointer; border-radius: 4px; }
+        .color-box.active { border-color: #000; box-shadow: 0 0 5px rgba(0,0,0,0.5); transform: scale(1.1); }
+        .eraser { background-image: linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%); background-size: 10px 10px; background-position: 0 0, 0 5px, 5px -5px, -5px 0px; }
+    </style>
+</head>
+<body>
+
+    <div id="header">
+        <h1>Actor script V5.28 - Tocar música</h1>
+        <div id="header-buttons">
+            <button class="community-btn" onclick="openPublishModal()">Publicar Jogo</button>
+            <button class="community-btn" onclick="openCommunityModal()">Jogos da Comunidade</button>
+        </div>
+        <div id="user-area">
+            <span id="user-display">Usuário: Convidado</span>
+            <button id="btn-account" onclick="openAccountModal()">Conta</button>
+        </div>
+    </div>
+
+    <main id="main-container">
+        <div class="column" id="block-palette">
+            <div class="block-category">
+                <h3>Movimento</h3>
+                <div class="block block-motion" onclick="addBlockToScript('GOTO_XY')">Vá para X: 0 Y: 0</div>
+                <div class="block block-motion" onclick="addBlockToScript('SET_X')">Vá para X: 0</div>
+                <div class="block block-motion" onclick="addBlockToScript('SET_Y')">Vá para Y: 0</div>
+                <div class="block block-motion" onclick="addBlockToScript('GOTO_RANDOM')">Vá para (posição aleatória)</div>
+                <div class="block block-motion" onclick="addBlockToScript('SET_SIZE')">definir tamanho para 100 %</div>
+                <div class="block block-motion" onclick="addBlockToScript('MOVE_STEPS')">Mova 10 passos</div>
+                <div class="block block-motion" onclick="addBlockToScript('POINT_IN_DIRECTION')">Aponte para a direção 90</div>
+                <div class="block block-motion" onclick="addBlockToScript('TURN_DEGREES')">Gire 15 graus</div>
+            </div>
+            
+            <div class="block-category">
+                <h3>Sons</h3>
+                <div class="block block-sound" onclick="addBlockToScript('PLAY_SOUND')">Tocar Som</div>
+                <div class="block block-sound" onclick="addBlockToScript('PLAY_SOUND_FOR_SECONDS')">Tocar Som por ... seg</div>
+            </div>
+
+            <div class="block-category"><h3>Eventos</h3><div class="block block-event" onclick="createNewScript('ON_START')">Quando o jogo começar</div><div class="block block-event" onclick="createNewScript('ON_CLICK')">Quando este ator for clicado</div><div class="block block-event" onclick="createNewScript('ON_KEY')">Quando a tecla [ w ] for pressionada</div><div class="block block-event" onclick="addBlockToScript('BROADCAST')">Mande a mensagem [ nome ]</div><div class="block block-event" onclick="createNewScript('ON_MESSAGE')">Quando eu receber [ nome ]</div></div>
+            <div class="block-category"><h3>Controle</h3><div class="block block-control" onclick="createNewScript('FOREVER')">Para sempre</div><div class="block block-control" onclick="addBlockToScript('WAIT_SECONDS')">Espere 1 segundos</div><div class="block block-control" onclick="addBlockToScript('IF_COLLISION')">Se colidir com ...</div><div class="block block-control" onclick="addBlockToScript('STOP')">Pare ...</div></div>
+            <div class="block-category" id="variable-blocks-palette"><h3>Variáveis</h3><button id="btn-variable" onclick="createVariable()">Criar uma Variável</button><div class="variable-pill-container" id="variable-pills"></div></div>
+            <div class="block-category" id="custom-blocks-palette"><h3>Meus Blocos</h3><button id="btn-custom-block" onclick="openCustomBlockModal()">Criar um Bloco</button></div>
+        </div>
+
+        <div class="column" id="scripting-area"> <h3 id="script-title">Script (Nenhum Ator)</h3> <div id="script-container" onclick="setActiveScript(event)"></div> </div>
+        <div class="column" id="stage-area"> <h3>Palco</h3> <div id="stage"><div id="variable-display-container"></div></div> <div id="controls"> <button id="btn-run" onclick="toggleExecution()">Executar</button> <hr> <h3>Atores</h3> <ul id="actor-list"></ul> <button id="btn-actor" onclick="createActor()">Criar Novo Ator</button> <button id="btn-draw-actor" onclick="openPixelEditor()">Desenhar Ator</button> <hr> <button id="btn-edit-scenery" onclick="openSceneryEditor()">Editar Cenário</button> </div> </div>
+    </main>
+    
+    <div id="custom-block-modal" class="modal-overlay"> <div class="modal-content"><h4>Crie seu Bloco</h4><div id="custom-block-preview"></div><div><button onclick="addLabelToCustomBlock()">Adicionar Texto</button><button onclick="addParamToCustomBlock()">Adicionar Parâmetro (bola)</button></div><hr><button onclick="saveCustomBlock()">Salvar</button><button class="cancel-btn" onclick="closeCustomBlockModal()">Cancelar</button></div></div>
+    <div id="param-menu" style="display: none;"></div>
+
+    <div id="account-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="account-tabs">
+                <button id="tab-login-btn" onclick="switchAccountTab('login')">Entrar</button>
+                <button id="tab-register-btn" onclick="switchAccountTab('register')">Criar Conta</button>
+            </div>
+            
+            <div id="login-tab" class="account-tab-content">
+                <h4>Entrar na Conta</h4>
+                <div class="form-group"> <label for="login-username">Nome de Usuário:</label> <input type="text" id="login-username"> </div>
+                <div class="form-group"> <label for="login-password">Senha:</label> <input type="password" id="login-password"> </div>
+                <hr> <button onclick="loginUser()">Entrar</button> <button class="cancel-btn" onclick="closeAccountModal()">Cancelar</button>
+            </div>
+
+            <div id="register-tab" class="account-tab-content">
+                <h4>Criar Nova Conta</h4>
+                 <p class="security-warning">AVISO: NÃO use senhas reais! Este site é um protótipo e não possui segurança. As informações são salvas localmente no seu navegador.</p>
+                <div class="form-group"> <label for="register-username">Nome de Usuário:</label> <input type="text" id="register-username"> </div>
+                <div class="form-group"> <label for="register-password">Senha:</label> <input type="password" id="register-password"> </div>
+                <hr> <button onclick="registerUser()">Criar</button> <button class="cancel-btn" onclick="closeAccountModal()">Cancelar</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="publish-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h4>Publicar Jogo na Comunidade</h4>
+            <div class="form-group"> <label for="game-name">Nome do Jogo:</label> <input type="text" id="game-name"> </div>
+            <div class="form-group"> <label for="creator-name">Seu Nome:</label> <input type="text" id="creator-name" readonly> </div>
+            <hr> <button onclick="publishGame()">Publicar</button> <button class="cancel-btn" onclick="closePublishModal()">Cancelar</button>
+        </div>
+    </div>
+
+    <div id="community-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h4>Jogos da Comunidade</h4>
+            <ul id="community-games-list"><li>Nenhum jogo publicado ainda.</li></ul>
+            <hr> 
+            <button class="cancel-btn" onclick="closeCommunityModal()">Voltar ao Editor</button>
+        </div>
+    </div>
+
+    <div id="play-mode-overlay"></div>
+
+    <div id="pixel-editor-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h4>Editor de Pixel Art do Ator</h4>
+            <div id="pixel-editor-container">
+                <div id="pixel-grid"></div>
+                <div id="pixel-controls">
+                    <div id="pixel-preview-container">
+                        <h5>Pré-visualização</h5>
+                        <canvas id="pixel-preview-canvas" width="16" height="16"></canvas>
+                    </div>
+                    <hr>
+                    <h5>Paleta</h5>
+                    <div id="color-palette"></div>
+                    <hr>
+                    <button onclick="clearPixelGrid()">Limpar</button>
+                    <button onclick="savePixelArt()">Salvar e Fechar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="scenery-editor-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h4>Editor de Cenário</h4>
+            <div id="scenery-editor-container">
+                <div id="scenery-grid"></div>
+                <div id="pixel-controls">
+                    <h5>Paleta</h5>
+                    <div id="scenery-color-palette"></div>
+                    <hr>
+                    <h5>Ferramentas</h5>
+                    <div id="scenery-tools">
+                        <button onclick="clearSceneryGrid()">Limpar</button>
+                        <button onclick="fillSceneryGrid()" title="Preencher (Balde)">&#128396;</button>
+                    </div>
+                    <hr>
+                    <button onclick="saveScenery()">Salvar e Fechar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- ESTADO GLOBAL ---
+        let actors = []; let globalVariables = []; let customBlocks = [];
+        let stageBackground = null;
+        let selectedActorId = null; let activeScriptIndex = null;
+        let isRunning = false; let animationFrameId = null;
+        let executionStack = []; let newBlockDefinition = [];
+        let activeInputContext = null;
+        let currentUser = null;
+  
