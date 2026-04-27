@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Labirinto Sensorial</title>
+    <style>
+        body {
+            margin: 0;
+            background-color: #121212;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+        }
+        canvas {
+            border: 4px solid #333;
+            background-color: #000;
+            box-shadow: 0 0 30px rgba(0,0,0,0.8);
+        }
+        #hud {
+            text-align: center;
+            margin-bottom: 15px;
+        }
+        #fase-texto {
+            font-size: 1.2em;
+            color: #aaa;
+            margin: 5px 0;
+        }
+        .instrucoes {
+            font-size: 0.8em;
+            color: #888;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="hud">
+        <h1>Labirinto Sensorial</h1>
+        <p id="fase-texto">Fase 1</p>
+        <p id="status">Clique na tela para começar</p>
+    </div>
+
+    <canvas id="gameCanvas" width="500" height="500"></canvas>
+
+    <div class="instrucoes">
+        Use o teclado para se movimentar
+    </div>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        const textoFase = document.getElementById("fase-texto");
+        const textoStatus = document.getElementById("status");
+
+        const tileSize = 50;
+        let faseAtual = 0;
+        let audioIniciado = false;
+        let player = { gridX: 1, gridY: 1 };
+
+        // Definição das 10 Fases (Removidos os portais tipo 4)
+        const fases = [
+            [[1,1,1,1,1,1,1,1,1,1],[1,0,0,0,0,0,0,0,0,1],[1,1,1,1,1,1,1,1,0,1],[1,1,1,1,1,1,1,1,2,1],[1,1,1,1,1,1,1,1,1,1]],
+            [[1,1,1,1,1,1,1,1,1,1],[1,0,0,0,1,1,1,1,1,1],[1,1,1,0,1,1,1,1,1,1],[1,1,1,0,0,0,0,0,1,1],[1,1,1,1,1,1,1,0,1,1],[1,1,1,2,0,0,0,0,1,1],[1,1,1,1,1,1,1,1,1,1]],
+            [[1,1,1,1,1,1,1,1,1,1],[1,0,1,0,0,0,1,0,0,1],[1,0,1,0,1,0,1,0,1,1],[1,0,0,0,1,0,0,0,0,1],[1,1,1,1,1,1,1,1,0,1],[1,2,0,0,0,0,0,0,0,1],[1,1,1,1,1,1,1,1,1,1]],
+            [[1,1,1,1,1,1,1,1,1,1],[1,0,1,2,1,1,1,1,1,1],[1,0,1,0,1,1,1,1,1,1],[1,0,1,0,1,1,1,1,1,1],[1,0,1,0,1,1,1,1,1,1],[1,0,0,0,1,1,1,1,1,1],[1,1,1,1,1,1,1,1,1,1]],
+            [[1,1,1,1,1,1,1,1,1,1],[1,0,0,0,0,0,0,0,0,1],[1,1,1,1,1,0,1,1,0,1],[1,0,0,0,1,0,1,0,0,1],[1,0,1,0,0,0,0,0,2,1],[1,1,1,1,1,1,1,1,1,1]],
+            [[1,1,1,1,1,1,1,1,1,1],[1,0,0,0,0,0,0,0,0,1],[1,1,1,1,1,1,1,1,0,1],[1,0,0,0,0,0,0,1,0,1],[1,0,1,1,1,2,0,1,0,1],[1,0,1,1,1,1,1,1,0,1],[1,0,0,0,0,0,0,0,0,1],[1,1,1,1,1,1,1,1,1,1]],
+            [[1,1,1,1,1,1,1,1,1,1],[1,0,0,0,0,1,0,0,0,1],[1,1,1,1,0,1,0,1,0,1],[1,1,1,1,0,0,0,1,2,1],[1,1,1,1,1,1,1,1,1,1]],
+            [[1,1,1,1,1,1,1,1,1,1],[1,0,0,1,1,1,1,1,1,1],[1,1,0,0,1,1,1,1,1,1],[1,1,1,0,0,1,1,1,1,1],[1,1,1,1,0,0,1,1,1,1],[1,1,1,1,1,0,2,1,1,1],[1,1,1,1,1,1,1,1,1,1]],
+            [[1,1,1,1,1,1,1,1,1,1],[1,0,0,0,1,0,0,0,0,1],[1,1,1,0,1,0,1,1,0,1],[1,0,0,0,0,0,1,0,0,1],[1,0,1,1,1,1,1,0,1,1],[1,0,1,0,0,0,1,0,1,1],[1,0,0,0,1,0,0,0,2,1],[1,1,1,1,1,1,1,1,1,1]],
+            [[1,1,1,1,1,1,1,1,1,1],[1,0,0,0,0,0,0,0,0,1],[1,0,0,1,0,1,0,1,0,1],[1,0,1,0,0,0,0,0,0,1],[1,0,0,0,1,0,1,0,0,1],[1,0,1,0,0,0,0,0,2,1],[1,0,0,0,0,0,1,0,0,1],[1,1,1,1,1,1,1,1,1,1]]
+        ];
+
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        const keysUp = ['w','e','r','t','y','u','i','o'];
+        const keysDown = ['x','c','v','b','n','m'];
+        const keysLeft = ['q','a','z'];
+        const keysRight = ['p','l'];
+
+        function falar(texto) {
+            if (!window.speechSynthesis) return;
+            window.speechSynthesis.cancel();
+            const msg = new SpeechSynthesisUtterance(texto);
+            msg.lang = 'pt-BR';
+            window.speechSynthesis.speak(msg);
+        }
+
+        function playSom(tipo) {
+            if (!audioIniciado) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            if (tipo === 'passo') {
+                osc.type = 'sine'; osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+            } else if (tipo === 'erro') {
+                osc.type = 'square'; osc.frequency.setValueAtTime(100, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.2);
+            }
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.start(); osc.stop(audioCtx.currentTime + 0.2);
+        }
+
+        function proximaFase() {
+            const faseAnterior = faseAtual + 1;
+            faseAtual++;
+            if (faseAtual < fases.length) {
+                player.gridX = 1; player.gridY = 1;
+                textoFase.innerText = "Fase " + (faseAtual + 1);
+                falar("Você completou a fase " + faseAnterior + ". Iniciando fase " + (faseAtual + 1));
+            } else {
+                faseAtual = 0; player.gridX = 1; player.gridY = 1;
+                textoFase.innerText = "Fase 1";
+                falar("Parabéns! Você completou todas as fases!");
+            }
+            draw();
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const mapa = fases[faseAtual];
+
+            for (let y = 0; y < mapa.length; y++) {
+                for (let x = 0; x < mapa[y].length; x++) {
+                    if (mapa[y][x] === 1) { 
+                        ctx.fillStyle = "#444"; 
+                        ctx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize); 
+                    }
+                    else if (mapa[y][x] === 2) { 
+                        ctx.fillStyle = "#FFD700"; 
+                        ctx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize); 
+                    }
+                }
+            }
+
+            // Jogador - Quadrado Vermelho
+            ctx.fillStyle = "#FF0000";
+            ctx.shadowBlur = 10; 
+            ctx.shadowColor = "#FF0000";
+            ctx.fillRect(player.gridX * tileSize + 8, player.gridY * tileSize + 8, tileSize - 16, tileSize - 16);
+            ctx.shadowBlur = 0;
+        }
+
+        function moverRPG(dx, dy) {
+            const mapa = fases[faseAtual];
+            let nX = player.gridX + dx, nY = player.gridY + dy;
+            
+            if (mapa[nY] && mapa[nY][nX] !== undefined) {
+                const destino = mapa[nY][nX];
+                if (destino === 1) {
+                    playSom('erro');
+                } else {
+                    player.gridX = nX; player.gridY = nY;
+                    playSom('passo');
+                    if (destino === 2) proximaFase();
+                }
+            } else {
+                playSom('erro');
+            }
+            draw();
+        }
+
+        window.addEventListener("keydown", (e) => {
+            if (!audioIniciado) return;
+            const k = e.key.toLowerCase();
+            
+            if (keysUp.includes(k)) moverRPG(0, -1);
+            else if (keysDown.includes(k)) moverRPG(0, 1);
+            else if (keysLeft.includes(k)) moverRPG(-1, 0);
+            else if (keysRight.includes(k)) moverRPG(1, 0);
+        });
+        
+        window.addEventListener("mousedown", () => {
+            if (!audioIniciado) {
+                audioCtx.resume(); 
+                audioIniciado = true;
+                textoStatus.innerText = "Jogo iniciado!";
+                falar("Jogo iniciado. Use as teclas para se movimentar. Fase 1.");
+                draw();
+            }
+        });
+
+        // Desenho inicial
+        draw();
+    </script>
+</body>
+</html>
